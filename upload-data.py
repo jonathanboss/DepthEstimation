@@ -7,6 +7,6 @@ from azureml.core import Dataset
 if __name__ == "__main__":
     ws = Workspace.from_config()
     datastore = ws.get_default_datastore()
-    datastore.upload(src_dir='datasets/KITTI98',
-                     target_path='datasets/KITTI98',
+    datastore.upload(src_dir='datasets/matterport',
+                     target_path='datasets/matterport',
                      overwrite=True)

@@ -11,6 +11,7 @@ import cv2
 import torchvision
 
 from data.dataset import DepthCompletionDataset
+from data.matterport import MatterportDataset
 from models.sparsity_invariant_cnn import SparseConvolutionalNetwork
 from utils.utils import make_depth_image
 
@@ -86,7 +87,7 @@ def plot_history(train_losses, valid_losses):
 
 def main(data_path):
     # Create dataset
-    dataset = DepthCompletionDataset(data_path)
+    dataset = MatterportDataset(data_path)
 
     print('Size of all data:', len(dataset))
     train_size = int(0.8 * len(dataset))
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--data_path',
         type=str,
-        default='../datasets/KITTI98',
+        default='datasets/matterport/',
         help='Path to the training data'
     )
 
@@ -153,6 +154,7 @@ if __name__ == '__main__':
     print("===== DATA =====")
     print("DATA PATH: " + args.data_path)
     print("LIST FILES IN DATA PATH...")
+    print(os.getcwd())
     print(os.listdir(args.data_path))
     print("================")
 
