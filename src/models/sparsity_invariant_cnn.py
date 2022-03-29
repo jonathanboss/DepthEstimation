@@ -6,7 +6,6 @@ class SparseConv(nn.Module):
     """
       Sparse convolution layer
     """
-
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -34,8 +33,8 @@ class SparseConv(nn.Module):
         )
 
         self.count_valid_entries = nn.Conv2d(
-            in_channels,
-            out_channels,
+            in_channels=1,
+            out_channels=1,
             kernel_size=kernel_size,
             padding=padding,
             bias=False)

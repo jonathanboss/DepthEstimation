@@ -7,16 +7,18 @@ from azureml.core import Run
 import argparse
 import os
 import logging
-import cv2
-import torchvision
 
 from data.dataset import DepthCompletionDataset
 from models.sparsity_invariant_cnn import SparseConvolutionalNetwork
-from utils.utils import make_depth_image
+from utils import utils
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 run = Run.get_context()
+
+model_dict = {
+    "SparseConvCNN": SparseConvolutionalNetwork(),
+}
 
 
 def one_epoch(model, data_loader, opt=None):
@@ -24,14 +26,15 @@ def one_epoch(model, data_loader, opt=None):
     train = False if opt is None else True
     model.train() if train else model.eval()
     losses, correct, total = [], 0, 0
-    for x, y, mask in data_loader:
-        x, y, mask = x.to(device, dtype=torch.float), y.to(device, dtype=torch.float), mask.to(device,
-                                                                                               dtype=torch.float)
+    for x, y, validity_mask in data_loader:
+        x, y, validity_mask = x.to(device, dtype=torch.float), y.to(device, dtype=torch.float), validity_mask.to(device,
+                                                                                                                 dtype=torch.float)
         with torch.set_grad_enabled(train):
-            output = model(x, mask)
+            output = model(x, validity_mask)
 
         loss_function = nn.MSELoss()  # TODO: implement custom loss function
-        loss = (loss_function(output, y) * mask.detach()).sum() / mask.sum()
+        unobserved_mask = torch.logical_and((y > 0).float(), (validity_mask == 0).float())
+        loss = loss_function(output * unobserved_mask, y)
 
         if train:
             opt.zero_grad()
@@ -51,7 +54,7 @@ def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_deca
     best_valid_accuracy_epoch = 0
 
     for epoch in range(max_epochs):
-        print(f'--- Epoch {epoch+1} / {max_epochs} ---')
+        print(f'--- Epoch {epoch + 1} / {max_epochs} ---')
         train_loss = one_epoch(model, loader_train, opt)
         train_losses.append(train_loss)
 
@@ -84,17 +87,13 @@ def plot_history(train_losses, valid_losses):
                   description='Update history of model evaluation metrics')
 
 
-def main(data_path):
+def main(data_path, model_name):
     # Create dataset
     dataset = DepthCompletionDataset(data_path)
 
-    print('Size of all data:', len(dataset))
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     data_train, data_valid = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-    print('Size of train data:', len(data_train))
-    print('Size of validation data:', len(data_valid))
 
     # Create the dataloader
     batch_size = 8
@@ -104,40 +103,15 @@ def main(data_path):
     # Start training of model
     log.info(f"Cuda is available: {torch.cuda.is_available()}")
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = SparseConvolutionalNetwork().to(device)
+    model = model_dict[model_name].to(device)
     plot_history(*train(model, train_dataloader, valid_dataloader, max_epochs=40, weight_decay=0.01))
 
     # Generate an example output from the model
     x, y, mask = next(iter(valid_dataloader))
     x, y, mask = x.to(device, dtype=torch.float), y.to(device, dtype=torch.float), mask.to(device, dtype=torch.float)
-
     output_example = model(x, mask)
-    output_example = output_example[0].cpu().detach().numpy()
-    output_example = make_depth_image(output_example)
 
-    x = x[0].cpu().detach().numpy()
-    y = y[0].cpu().detach().numpy()
-    x = make_depth_image(x)
-    y = make_depth_image(y)
-
-    cv2.imwrite('output_example.png', output_example)
-    cv2.imwrite('input_example.png', x)
-    cv2.imwrite('gt_example.png', y)
-
-    run.log_image(name='Example of output',
-                  path='output_example.png',
-                  plot=None,
-                  description='Example of output')
-
-    run.log_image(name='Example of input',
-                  path='input_example.png',
-                  plot=None,
-                  description='Example of input')
-
-    run.log_image(name='Example of ground truth',
-                  path='gt_example.png',
-                  plot=None,
-                  description='Example of ground truth')
+    utils.log_output_example(run, x, y, output_example)
 
 
 if __name__ == '__main__':
@@ -149,6 +123,13 @@ if __name__ == '__main__':
         help='Path to the training data'
     )
 
+    parser.add_argument(
+        '--model',
+        type=str,
+        default='SparseConvCNN',
+        help='Name of the model to train'
+    )
+
     args = parser.parse_args()
     print("===== DATA =====")
     print("DATA PATH: " + args.data_path)
@@ -156,4 +137,4 @@ if __name__ == '__main__':
     print(os.listdir(args.data_path))
     print("================")
 
-    main(args.data_path)
+    main(args.data_path, args.model)
