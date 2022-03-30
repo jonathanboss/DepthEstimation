@@ -69,10 +69,10 @@ class SparseConvolutionalNetwork(nn.Module):
 
     def forward(self, x, validity_mask):
         x, validity_mask = self.sparse_layer1(x, validity_mask)
-        x, validity_mask = self.sparse_layer2(x, validity_mask)
-        x, validity_mask = self.sparse_layer3(x, validity_mask)
-        x, validity_mask = self.sparse_layer4(x, validity_mask)
-        x, validity_mask = self.sparse_layer5(x, validity_mask)
+        #x, validity_mask = self.sparse_layer2(x, validity_mask)
+        #x, validity_mask = self.sparse_layer3(x, validity_mask)
+        #x, validity_mask = self.sparse_layer4(x, validity_mask)
+        #x, validity_mask = self.sparse_layer5(x, validity_mask)
         x, validity_mask = self.sparse_layer6(x, validity_mask)
 
         return x

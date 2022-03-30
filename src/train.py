@@ -98,7 +98,7 @@ def main(data_path):
     print('Size of validation data:', len(data_valid))
 
     # Create the dataloader
-    batch_size = 8
+    batch_size = 2
     train_dataloader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
     valid_dataloader = DataLoader(data_valid, batch_size=batch_size, shuffle=False)
 

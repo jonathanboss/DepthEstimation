@@ -6,6 +6,7 @@ import cv2 as cv
 from pathlib import Path
 import glob
 import os
+from os.path import exists
 
 class MatterportDataset(Dataset):
     def __init__(self, data_path):
@@ -34,11 +35,10 @@ class MatterportDataset(Dataset):
 
     def get_file_paths(self, data_path : str) -> List[str]:
         filepaths = []
-        print(os.getcwd())
-        print(Path(data_path))
         for p in Path(data_path).rglob('*.png'):
             depth = str(p)
             color = depth.replace('.png', '.jpg').replace('matterport_depth_images', 'matterport_color_images').replace('_d', '_i')
-            filepaths.append((depth, color))
+            if(exists(color) and exists(depth)):
+                filepaths.append((depth, color))
             
         return filepaths
