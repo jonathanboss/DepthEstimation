@@ -16,12 +16,12 @@ if __name__ == '__main__':
 
     # Define dataset
     datastore = workspace.get_default_datastore()
-    dataset = Dataset.File.from_files(path=(datastore, '/datasets/KITTI98/'))
+    dataset = Dataset.File.from_files(path=(datastore, '/datasets/matterport/'))
 
     # Configure run of script
     config = ScriptRunConfig(
         source_directory='./src',
-        script='train.py',
+        script='train_unet.py',
         compute_target='gpu-cluster',
         arguments=[
             '--data_path', dataset.as_named_input('input').as_mount()],
