@@ -6,12 +6,14 @@ from azureml.core import Run
 def make_depth_image(img, color_map=cv2.COLORMAP_JET):
     if torch.is_tensor(img):
         img = img.numpy()
+    
     img = np.squeeze(img)
 
     no_info = np.where(img < 1.0)  # indices of pixels where there is no depth info
     img_color = cv2.applyColorMap(img.astype(np.uint8), color_map)
     img_color[no_info] = [0, 0, 0]  # set color to pitch black
-    img_color = img_color * (255 / np.max(img_color))  # normalize to range {0, 255}
+    eps = 10e-8
+    img_color = img_color * (255 / (np.max(img_color)+eps))  # normalize to range {0, 255}
     return img_color
 
 def log_output_example(run, x, y, output_example):
