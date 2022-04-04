@@ -115,7 +115,7 @@ def main(data_path):
     
     output_example = model(x, mask)
     output_example = output_example[0].cpu().detach().numpy()
-    print(output_example.shape, np.max(output_example))
+    #print(output_example.shape, np.max(output_example))
     output_example = make_depth_image(output_example)
 
     x = x[0].cpu().detach().numpy()
