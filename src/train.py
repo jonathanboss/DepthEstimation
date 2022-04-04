@@ -9,6 +9,7 @@ import os
 import logging
 
 from data.dataset import DepthCompletionDataset
+from data.matterport import MatterportDataset
 from models.sparsity_invariant_cnn import SparseConvolutionalNetwork
 from utils import utils
 
@@ -89,14 +90,14 @@ def plot_history(train_losses, valid_losses):
 
 def main(data_path, model_name):
     # Create dataset
-    dataset = DepthCompletionDataset(data_path)
+    dataset = MatterportDataset(data_path)
 
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     data_train, data_valid = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     # Create the dataloader
-    batch_size = 8
+    batch_size = 2
     train_dataloader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
     valid_dataloader = DataLoader(data_valid, batch_size=batch_size, shuffle=False)
 
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--data_path',
         type=str,
-        default='../datasets/KITTI98',
+        default='datasets/matterport/',
         help='Path to the training data'
     )
 
@@ -134,6 +135,7 @@ if __name__ == '__main__':
     print("===== DATA =====")
     print("DATA PATH: " + args.data_path)
     print("LIST FILES IN DATA PATH...")
+    print(os.getcwd())
     print(os.listdir(args.data_path))
     print("================")
 
