@@ -12,6 +12,7 @@ from data.dataset import DepthCompletionDataset
 from data.matterport import MatterportDataset
 from models.sparsity_invariant_cnn import SparseConvolutionalNetwork
 from utils import utils
+from models.unet import UNET, Late_fusion_UNET
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -19,31 +20,39 @@ run = Run.get_context()
 
 model_dict = {
     "SparseConvCNN": SparseConvolutionalNetwork(),
+    "unet": UNET(),
+    "unet_late_fusion": Late_fusion_UNET()
 }
 
 
-def one_epoch(model, data_loader, opt=None):
+def one_epoch(model, data_loader, epoch_number, opt=None):
     device = next(model.parameters()).device
     train = False if opt is None else True
     model.train() if train else model.eval()
     losses, correct, total = [], 0, 0
-    for x, y, validity_mask in data_loader:
-        x, y, validity_mask = x.to(device, dtype=torch.float), y.to(device, dtype=torch.float), validity_mask.to(device,
+
+    for x_sparse, x_color, y, validity_mask in data_loader:
+        x_sparse, x_color, y, validity_mask = x_sparse.to(device, dtype=torch.float),x_color.to(device, dtype=torch.float), y.to(device, dtype=torch.float), validity_mask.to(device,
                                                                                                                  dtype=torch.float)
         with torch.set_grad_enabled(train):
-            output = model(x, validity_mask)
+            output = model(x_sparse, x_color)
 
-        loss_function = nn.MSELoss()  # TODO: implement custom loss function
-        unobserved_mask = torch.logical_and((y > 0).float(), (validity_mask == 0).float())
-        loss = loss_function(output * unobserved_mask, y)
-
+        loss_function = nn.L1Loss() # TODO: implement custom loss function
+        #unobserved_mask = torch.logical_and((y > 0).float(), (validity_mask == 0).float())
+        loss = loss_function(torch.mul(output, validity_mask), torch.mul(y, validity_mask))*output.numel()/validity_mask.sum()
+        
         if train:
             opt.zero_grad()
             loss.backward()
             opt.step()
+            
 
         losses.append(loss.item())
-    return np.mean(losses)
+        
+    if not train:
+        utils.log_output_example(run, x_sparse, x_color, y, output, str(epoch_number))
+        
+    return np.mean(losses)*2**16
 
 
 def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_decay=0., patience=5):
@@ -54,17 +63,26 @@ def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_deca
     best_valid_accuracy = 0
     best_valid_accuracy_epoch = 0
 
+    best_loss_epoch = 0
+    best_loss = 10e10
     for epoch in range(max_epochs):
         print(f'--- Epoch {epoch + 1} / {max_epochs} ---')
-        train_loss = one_epoch(model, loader_train, opt)
+        train_loss = one_epoch(model, loader_train, epoch, opt)
         train_losses.append(train_loss)
 
-        valid_loss = one_epoch(model, loader_valid)
+        valid_loss = one_epoch(model, loader_valid, epoch)
         valid_losses.append(valid_loss)
 
         print(f'Train loss: {train_loss}, Validation loss: {valid_loss}')
         run.log('Train loss', train_loss)
         run.log('Validation loss', valid_loss)
+        
+        if valid_loss < best_loss:
+            best_loss = valid_loss
+            best_loss_epoch = epoch
+            
+        if epoch > best_loss_epoch + patience:
+            break            
 
     return train_losses, valid_losses
 
@@ -90,6 +108,7 @@ def plot_history(train_losses, valid_losses):
 
 def main(data_path, model_name):
     # Create dataset
+    print("model name:", model_name)
     dataset = MatterportDataset(data_path)
 
     train_size = int(0.8 * len(dataset))
@@ -97,7 +116,7 @@ def main(data_path, model_name):
     data_train, data_valid = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     # Create the dataloader
-    batch_size = 2
+    batch_size = 8
     train_dataloader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
     valid_dataloader = DataLoader(data_valid, batch_size=batch_size, shuffle=False)
 
@@ -105,14 +124,14 @@ def main(data_path, model_name):
     log.info(f"Cuda is available: {torch.cuda.is_available()}")
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model_dict[model_name].to(device)
-    plot_history(*train(model, train_dataloader, valid_dataloader, max_epochs=40, weight_decay=0.01))
-
+    train_losses, valid_losses = train(model, train_dataloader, valid_dataloader, max_epochs=50)#, weight_decay=0.01)
+    plot_history(train_losses, valid_losses)
     # Generate an example output from the model
-    x, y, mask = next(iter(valid_dataloader))
-    x, y, mask = x.to(device, dtype=torch.float), y.to(device, dtype=torch.float), mask.to(device, dtype=torch.float)
-    output_example = model(x, mask)
-
-    utils.log_output_example(run, x, y, output_example)
+    x_sparse, x_color, y, mask = next(iter(valid_dataloader))
+    x_sparse, x_color, y, mask = x_sparse.to(device, dtype=torch.float), x_color.to(device, dtype=torch.float), y.to(device, dtype=torch.float), mask.to(device, dtype=torch.float)
+    output_example = model(x_sparse, x_color)
+    
+    utils.log_output_example(run, x_sparse, x_color, y, output_example, 'final')
 
 
 if __name__ == '__main__':
@@ -127,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--model',
         type=str,
-        default='SparseConvCNN',
+        default='unet_late_fusion',
         help='Name of the model to train'
     )
 

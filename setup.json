@@ -1,4 +1,4 @@
 {
-    "dataset": "KITTI98",
-    "model": "SparseConvCNN"
+    "dataset": "matterport",
+    "model": "unet_late_fusion"
 }
