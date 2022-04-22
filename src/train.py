@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import datasets
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
@@ -14,6 +15,10 @@ from models.sparsity_invariant_cnn import SparseConvolutionalNetwork
 from utils import utils
 from models.unet import UNET, Late_fusion_UNET
 
+#TODO : augmentations
+#TODO : Learning rate scheduling? https://stats.stackexchange.com/questions/324896/training-loss-increases-with-time
+#TODO : artifacts? https://distill.pub/2016/deconv-checkerboard/
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 run = Run.get_context()
@@ -25,37 +30,43 @@ model_dict = {
 }
 
 
-def one_epoch(model, data_loader, epoch_number, opt=None):
+def one_epoch(model, data_loader, epoch_number, opt=None, batches_per_epoch = 1):
     device = next(model.parameters()).device
     train = False if opt is None else True
     model.train() if train else model.eval()
     losses, correct, total = [], 0, 0
 
-    for x_sparse, x_color, y, validity_mask in data_loader:
+    for i, (x_sparse, x_color, y, validity_mask) in enumerate(data_loader):
         x_sparse, x_color, y, validity_mask = x_sparse.to(device, dtype=torch.float),x_color.to(device, dtype=torch.float), y.to(device, dtype=torch.float), validity_mask.to(device,
                                                                                                                  dtype=torch.float)
+        #print("max", torch.max(x_color), "min", torch.min(x_color), "avg", torch.mean(x_color))
+        
         with torch.set_grad_enabled(train):
             output = model(x_sparse, x_color)
 
         loss_function = nn.L1Loss() # TODO: implement custom loss function
         #unobserved_mask = torch.logical_and((y > 0).float(), (validity_mask == 0).float())
         loss = loss_function(torch.mul(output, validity_mask), torch.mul(y, validity_mask))*output.numel()/validity_mask.sum()
+        print(train, output.numel()/validity_mask.sum())
         
         if train:
             opt.zero_grad()
             loss.backward()
-            opt.step()
-            
+            opt.step()       
 
         losses.append(loss.item())
+        
+        if i >= batches_per_epoch:
+            break     
         
     if not train:
         utils.log_output_example(run, x_sparse, x_color, y, output, str(epoch_number))
         
+        
     return np.mean(losses)*2**16
 
 
-def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_decay=0., patience=5):
+def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_decay=0., patience=15):
     train_losses, train_accuracies = [], []
     valid_losses, valid_accuracies = [], []
 
@@ -67,6 +78,7 @@ def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_deca
     best_loss = 10e10
     for epoch in range(max_epochs):
         print(f'--- Epoch {epoch + 1} / {max_epochs} ---')
+        
         train_loss = one_epoch(model, loader_train, epoch, opt)
         train_losses.append(train_loss)
 
@@ -110,6 +122,7 @@ def main(data_path, model_name):
     # Create dataset
     print("model name:", model_name)
     dataset = MatterportDataset(data_path)
+    print("Dataset size :", len(dataset))
 
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
@@ -118,13 +131,14 @@ def main(data_path, model_name):
     # Create the dataloader
     batch_size = 8
     train_dataloader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
-    valid_dataloader = DataLoader(data_valid, batch_size=batch_size, shuffle=False)
+    valid_dataloader = DataLoader(data_valid, batch_size=batch_size, shuffle=True)
+    print("Training batches :", len(train_dataloader), "Valid batches:", len(valid_dataloader))
 
     # Start training of model
     log.info(f"Cuda is available: {torch.cuda.is_available()}")
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model_dict[model_name].to(device)
-    train_losses, valid_losses = train(model, train_dataloader, valid_dataloader, max_epochs=50)#, weight_decay=0.01)
+    train_losses, valid_losses = train(model, train_dataloader, valid_dataloader, max_epochs=100)#, weight_decay=0.01)
     plot_history(train_losses, valid_losses)
     # Generate an example output from the model
     x_sparse, x_color, y, mask = next(iter(valid_dataloader))
@@ -139,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--data_path',
         type=str,
-        default='datasets/matterport/',
+        default='datasets/matterport_undistorted2/',
         help='Path to the training data'
     )
 

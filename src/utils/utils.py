@@ -2,6 +2,7 @@ import torch
 import cv2
 import numpy as np
 from azureml.core import Run
+from data.matterport import MatterportDataset
 
 def make_depth_image(img, color_map=cv2.COLORMAP_JET):
     if torch.is_tensor(img):
@@ -20,10 +21,12 @@ def make_depth_image(img, color_map=cv2.COLORMAP_JET):
 def log_output_example(run, x_sparse, x_color, y, output_example, name):
     batch_size = x_sparse.shape[0]
     x_sparse = x_sparse.cpu().detach().numpy()
+    x_color = MatterportDataset.inverse_color_transform(x_color)
+
     x_color = x_color.cpu().detach().numpy()
     y = y.cpu().detach().numpy()
     output_example = output_example.cpu().detach().numpy()
-    for i in range(4):#range(batch_size):
+    for i in range(batch_size):
         x_sparse_img = make_depth_image(x_sparse[i])
         x_color_img = np.moveaxis(x_color[i], 0, -1)
         y_img = make_depth_image(y[i])
@@ -42,7 +45,6 @@ def log_output_example(run, x_sparse, x_color, y, output_example, name):
         #cv2.imwrite(x_color_path, x_color_img)
         #cv2.imwrite(y_path, y_img)
 
-        #if not log_output_example.logged:
         run.log_image(name= name + '_Example' + str(i),
                     path=output_path,
                     plot=None,

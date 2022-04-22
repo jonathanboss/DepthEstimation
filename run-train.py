@@ -7,7 +7,8 @@ log = logging.getLogger(__name__)
 
 dataset_paths = {
     "KITTI98": '/datasets/KITTI98/',
-    "matterport": '/datasets/matterport/'
+    "matterport": '/datasets/matterport/',
+    "matterport_undistorted": '/datasets/matterport_undistorted2'
 }
 
 def load_setup():
