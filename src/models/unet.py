@@ -19,7 +19,7 @@ class DoubleConv(nn.Module):
 
 class UNET(nn.Module):
     def __init__(
-            self, in_channels=1, out_channels=1, features=[8, 16, 32, 64],
+            self, in_channels=4, out_channels=1, features=[8, 16, 32, 64],
     ):
         super(UNET, self).__init__()
         self.ups = nn.ModuleList()
@@ -43,7 +43,7 @@ class UNET(nn.Module):
         self.bottleneck = DoubleConv(features[-1], features[-1]*2)
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, x, mask = None):
         skip_connections = []
 
         for down in self.downs:

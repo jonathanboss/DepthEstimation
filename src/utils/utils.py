@@ -6,6 +6,7 @@ import numpy as np
 def make_depth_image(img, baseline, color_map=cv2.COLORMAP_JET):
     if torch.is_tensor(img):
         img = img.numpy()
+    
     img = np.squeeze(img)
 
     img = img * (255 / baseline)  # normalize to range {0, 255}
@@ -44,46 +45,3 @@ def log_output_example(run, x_sparse, x_color, y, output_example, name):
                       path=output_path,
                       plot=None,
                       description=name + '_Example' + str(i))
-
-# def log_output_example(run, rgb, x, y, output_example):
-#     batch_size = x.shape[0]
-#     rgb = rgb.cpu().detach().numpy()
-#     x = x.cpu().detach().numpy()
-#     y = y.cpu().detach().numpy()
-#     output_example = output_example.cpu().detach().numpy()
-#
-#     for i in range(batch_size):
-#         rgb_img = make_rgb_image(rgb[i])
-#         x_img = make_depth_image(x[i])
-#         y_img = make_depth_image(y[i])
-#         output_example_img = make_depth_image(output_example[i])
-#
-#         rgb_path = "rgb_example" + str(i) + '.png'
-#         output_path = 'output_example' + str(i) + '.png'
-#         x_path = 'input_example' + str(i) + '.png'
-#         y_path = 'gt_example' + str(i) + '.png'
-#
-#         cv2.imwrite(rgb_path, rgb_img)
-#         cv2.imwrite(output_path, output_example_img)
-#         cv2.imwrite(x_path, x_img)
-#         cv2.imwrite(y_path, y_img)
-#
-#         run.log_image(name='Example of RGB input',
-#                       path=rgb_path,
-#                       plot=None,
-#                       description='Example of RGB truth')
-#
-#         run.log_image(name='Example of output',
-#                       path=output_path,
-#                       plot=None,
-#                       description='Example of output')
-#
-#         run.log_image(name='Example of sparse depth input',
-#                       path=x_path,
-#                       plot=None,
-#                       description='Example of sparse depth input')
-#
-#         run.log_image(name='Example of ground truth',
-#                       path=y_path,
-#                       plot=None,
-#                       description='Example of ground truth')

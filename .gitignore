@@ -133,3 +133,4 @@ datasets/*
 outputs/
 config.json
 .idea
+*.png

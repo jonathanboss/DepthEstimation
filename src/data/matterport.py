@@ -43,7 +43,7 @@ class MatterportDataset(Dataset):
         ones = np.ones(dense.shape, dtype=int)
         mask_sparse = torch.from_numpy(np.random.binomial(ones, 0.01))
         sparse = mask_sparse * dense
-
+        
         # make binary mask of where sparse depth info exists
         validity_idx = torch.nonzero(sparse, as_tuple=True)
         validity_mask = torch.zeros(sparse.shape)
