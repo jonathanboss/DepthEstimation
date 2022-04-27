@@ -21,6 +21,7 @@ class DepthCompletionDataset(Dataset):
         mask = np.random.binomial(ones, 0.01)
         sparse = mask * gt
 
+        # make binary mask of where sparse depth info exists
         validity_idx = np.nonzero(sparse)
         validity_mask = np.zeros(sparse.shape)
         validity_mask[validity_idx] = 1

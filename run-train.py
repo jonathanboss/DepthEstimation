@@ -7,6 +7,8 @@ log = logging.getLogger(__name__)
 
 dataset_paths = {
     "KITTI98": '/datasets/KITTI98/',
+    "matterport": '/datasets/matterport/',
+    "matterport_undistorted": '/datasets/matterport_undistorted2'
 }
 
 def load_setup():
@@ -17,6 +19,7 @@ def load_setup():
     data = json.load(f)
 
     return data['dataset'], data['model']
+
 
 def main(dataset_name, model):
     exp_name = model + '_' + dataset_name
@@ -61,6 +64,7 @@ def main(dataset_name, model):
     print('Printing Azure ML experiment run handle.')
     print(aml_url_handle)
     run.wait_for_completion(show_output=True)
+
 
 if __name__ == '__main__':
     dataset_name, model = load_setup()
