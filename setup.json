@@ -1,4 +1,4 @@
 {
     "dataset": "matterport_undistorted",
-    "model": "unet_late_fusion"
+    "model": "YNET"
 }
