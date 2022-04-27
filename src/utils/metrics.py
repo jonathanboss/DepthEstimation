@@ -17,7 +17,7 @@ class Metrics():
 
     def compute(self, run):
         for name, metric in self.metrics.items():
-            value = metric.compute()
+            value = metric.compute().item()
             run.log(name, value)
             print(name, value)
 
