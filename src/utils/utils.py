@@ -28,6 +28,7 @@ def log_output_example(run, x_sparse, x_color, y, output_example, name):
     batch_size = x_sparse.shape[0]
     x_sparse = x_sparse.cpu().detach().numpy()
     x_color = MatterportDataset.inverse_color_transform(x_color)
+    x_color = x_color.cpu().detach().numpy()
     y = y.cpu().detach().numpy()
     output_example = output_example.cpu().detach().numpy()
     for i in range(batch_size):

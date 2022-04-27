@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import datasets
 import torch
 from torch import masked_fill, nn
 from torch.utils.data import Dataset, DataLoader
@@ -47,8 +46,7 @@ def one_epoch(model, data_loader, epoch_number, opt=None):
     model.train() if train else model.eval()
     losses, correct, total = [], 0, 0
 
-    if not train:
-        metrics = Metrics(device)
+    metrics = Metrics(device)
     
     for rgb, sparse, validity_mask, dense in data_loader:
         rgb = rgb.to(device, dtype=torch.float)
@@ -61,7 +59,9 @@ def one_epoch(model, data_loader, epoch_number, opt=None):
             
         loss_function = nn.L1Loss()
         unobserved_mask = torch.mul((dense > 0), ~(validity_mask > 0))
-        loss = loss_function(torch.mul(output, unobserved_mask), torch.mul(dense, unobserved_mask)) * output.numel() / unobserved_mask.sum()
+        masked_output = torch.mul(output, unobserved_mask)
+        masked_gt = torch.mul(dense, unobserved_mask)
+        loss = loss_function(masked_output, masked_gt) * output.numel() / unobserved_mask.sum()
         
         if not train:
             metrics.step(masked_output, masked_gt)
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--data_path',
         type=str,
-        default='datasets/matterport_undistorted2/',
+        default='../datasets/matterport_undistorted2/',
         help='Path to the training data'
     )
 

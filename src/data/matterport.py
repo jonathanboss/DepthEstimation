@@ -1,5 +1,4 @@
-from tkinter import E
-from torch import get_file_path
+import torchvision
 import torch
 from torch.utils.data import Dataset
 from typing import List, Tuple
@@ -21,7 +20,7 @@ class MatterportDataset(Dataset):
     def __getitem__(self, idx):
         # Load dense depth image
         dense = cv.imread(self.filepaths[idx][0], cv.IMREAD_ANYDEPTH).astype(float)
-        dense = dense / 2**16  # normalize
+        dense = dense / 2 ** 16  # normalize
 
         color = cv.imread(self.filepaths[idx][1], cv.IMREAD_COLOR)
         assert (np.max(color) <= 255), f'Max value in image {np.max(color)}. Should be lower than 255'
@@ -45,29 +44,27 @@ class MatterportDataset(Dataset):
         ones = np.ones(dense.shape, dtype=int)
         mask_sparse = torch.from_numpy(np.random.binomial(ones, 0.01))
         sparse = mask_sparse * dense
-        
+
         # make binary mask of where sparse depth info exists
         validity_idx = torch.nonzero(sparse, as_tuple=True)
         validity_mask = torch.zeros(sparse.shape)
         validity_mask[validity_idx] = 1
 
         return color, sparse, validity_mask, dense
-        
-    
+
     @staticmethod
     def inverse_color_transform(images):
         inv_color_normalization = torchvision.transforms.Compose([
-                                    torchvision.transforms.Normalize(
-                                        mean=[0, 0, 0],
-                                        std=[1/0.229, 1/0.224, 1/0.225],
-                                    ),
-                                    torchvision.transforms.Normalize(
-                                        mean=[-0.485, -0.456, -0.406],
-                                        std=[1., 1., 1.]
-                                    )])
-        
-        
-        return inv_color_normalization(images)*255
+            torchvision.transforms.Normalize(
+                mean=[0, 0, 0],
+                std=[1 / 0.229, 1 / 0.224, 1 / 0.225],
+            ),
+            torchvision.transforms.Normalize(
+                mean=[-0.485, -0.456, -0.406],
+                std=[1., 1., 1.]
+            )])
+
+        return inv_color_normalization(images)
 
     @staticmethod
     def get_file_paths(data_path: str) -> List[str]:
@@ -78,4 +75,4 @@ class MatterportDataset(Dataset):
                                                           'undistorted_color_images').replace('_d', '_i')
             if exists(color) and exists(depth):
                 filepaths.append((depth, color))
-        return filepaths[1000:11000]
+        return filepaths

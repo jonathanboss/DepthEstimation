@@ -1,4 +1,5 @@
 from azureml.core import Workspace, Experiment, Environment, ScriptRunConfig, Dataset, Run
+from azureml.core.authentication import InteractiveLoginAuthentication
 import logging
 import json
 
