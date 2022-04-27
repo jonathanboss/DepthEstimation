@@ -1,4 +1,4 @@
 {
-    "dataset": "KITTI98",
-    "model": "SparseConvCNN"
+    "dataset": "matterport_undistorted",
+    "model": "YNET"
 }
