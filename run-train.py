@@ -42,7 +42,7 @@ def main(dataset_name, model):
     config = ScriptRunConfig(
         source_directory='./src',
         script='train.py',
-        compute_target='gpu-cluster',
+        compute_target='vildgpu',
         arguments=[
             '--data_path', dataset.as_named_input('input').as_mount(),
             '--model', model],

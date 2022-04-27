@@ -10,7 +10,7 @@ from os.path import exists
 
 
 class MatterportDataset(Dataset):
-    def __init__(self, data_path, normalize=False):
+    def __init__(self, data_path, normalize=True):
         self.filepaths = self.get_file_paths(data_path)
         self.normalize = normalize
 
@@ -75,4 +75,4 @@ class MatterportDataset(Dataset):
                                                           'undistorted_color_images').replace('_d', '_i')
             if exists(color) and exists(depth):
                 filepaths.append((depth, color))
-        return filepaths
+        return filepaths[0:10]
