@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import datasets
 import torch
-from torch import nn
+from torch import masked_fill, nn
 from torch.utils.data import Dataset, DataLoader
 from azureml.core import Run
 import argparse
@@ -12,8 +12,9 @@ import logging
 from data.dataset import DepthCompletionDataset
 from data.matterport import MatterportDataset
 from models.sparsity_invariant_cnn import SparseConvolutionalNetwork
-from utils import utils
 from models.unet import UNET, Late_fusion_UNET
+from utils import utils
+from utils.metrics import Metrics
 
 #TODO : augmentations
 #TODO : Learning rate scheduling? https://stats.stackexchange.com/questions/324896/training-loss-increases-with-time
@@ -35,6 +36,9 @@ def one_epoch(model, data_loader, epoch_number, opt=None, batches_per_epoch = 1)
     train = False if opt is None else True
     model.train() if train else model.eval()
     losses, correct, total = [], 0, 0
+    if not train:
+        metrics = Metrics(device)
+    
 
     for i, (x_sparse, x_color, y, validity_mask) in enumerate(data_loader):
         x_sparse, x_color, y, validity_mask = x_sparse.to(device, dtype=torch.float),x_color.to(device, dtype=torch.float), y.to(device, dtype=torch.float), validity_mask.to(device,
@@ -46,8 +50,12 @@ def one_epoch(model, data_loader, epoch_number, opt=None, batches_per_epoch = 1)
 
         loss_function = nn.L1Loss() # TODO: implement custom loss function
         #unobserved_mask = torch.logical_and((y > 0).float(), (validity_mask == 0).float())
-        loss = loss_function(torch.mul(output, validity_mask), torch.mul(y, validity_mask))*output.numel()/validity_mask.sum()
-        print(train, output.numel()/validity_mask.sum())
+        masked_output = torch.mul(output, validity_mask)
+        masked_gt =  torch.mul(y, validity_mask)
+        loss = loss_function(masked_output, masked_gt)*output.numel()/validity_mask.sum()
+        
+        if not train:
+            metrics.step(masked_output, masked_gt)
         
         if train:
             opt.zero_grad()
@@ -59,11 +67,14 @@ def one_epoch(model, data_loader, epoch_number, opt=None, batches_per_epoch = 1)
         if i >= batches_per_epoch:
             break     
         
+    #print(result[0], result[1], result[2])
+        
     if not train:
         utils.log_output_example(run, x_sparse, x_color, y, output, str(epoch_number))
+        metrics.compute(run)
+        metrics.reset()
         
-        
-    return np.mean(losses)*2**16
+    return np.mean(losses)
 
 
 def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=30, weight_decay=0., patience=15):

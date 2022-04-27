@@ -12,7 +12,7 @@ from os.path import exists
 
 class MatterportDataset(Dataset):
     def __init__(self, data_path, N = None):
-        self.filepaths = self.get_file_paths(data_path)[0:30]
+        self.filepaths = self.get_file_paths(data_path)
         #if N is not None:
         #    self.filepaths = self.filepaths[0:N]
         self.color_normalization = torchvision.transforms.Compose([
@@ -28,15 +28,12 @@ class MatterportDataset(Dataset):
     def __getitem__(self, idx):
         dense = cv.imread(self.filepaths[idx][0], cv.IMREAD_ANYDEPTH).astype(float)
         dense = cv.resize(dense, (0,0), fx=0.25, fy=0.25)
-        dense = dense*1/(2**16)
+        dense = dense/4000
         color = cv.imread(self.filepaths[idx][1], cv.IMREAD_COLOR).astype(np.uint8)
         color = cv.resize(color, (0,0), fx=0.25, fy=0.25)
         #print(np.min(color), np.mean(color), np.max(color))
         #color = np.moveaxis(color, -1, 0)
-        color = self.color_normalization(color)
-
-
-        
+        color = self.color_normalization(color) 
         
         mask_missing_data = dense != 0
         ones = np.ones(dense.shape, dtype=int)
