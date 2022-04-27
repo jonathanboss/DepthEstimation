@@ -40,7 +40,7 @@ def main(dataset_name, model):
     # Configure run of script
     config = ScriptRunConfig(
         source_directory='./src',
-        script='train_unet.py',
+        script='train.py',
         compute_target='gpu-cluster',
         arguments=[
             '--data_path', dataset.as_named_input('input').as_mount(),

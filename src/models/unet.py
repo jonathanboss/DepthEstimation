@@ -65,3 +65,18 @@ class UNET(nn.Module):
             x = self.ups[idx+1](concat_skip)
 
         return self.final_conv(x)
+    
+    
+class Late_fusion_UNET(nn.Module):
+    def __init__(self):
+        super(Late_fusion_UNET, self).__init__()
+        self.unet_depth = UNET(in_channels=1)
+        self.unet_color = UNET(in_channels=3)
+        self.unet_decoder = UNET(in_channels=2)
+    
+    def forward(self, x_sparse, x_color):
+        x_depth = self.unet_depth(x_sparse)
+        x_color = self.unet_color(x_color)
+  
+        concat = torch.cat((x_depth, x_color), dim=1)
+        return self.unet_decoder(concat)

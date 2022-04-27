@@ -1,3 +1,5 @@
+from tkinter import E
+from torch import get_file_path
 import torch
 from torch.utils.data import Dataset
 from typing import List, Tuple
@@ -50,6 +52,22 @@ class MatterportDataset(Dataset):
         validity_mask[validity_idx] = 1
 
         return color, sparse, validity_mask, dense
+        
+    
+    @staticmethod
+    def inverse_color_transform(images):
+        inv_color_normalization = torchvision.transforms.Compose([
+                                    torchvision.transforms.Normalize(
+                                        mean=[0, 0, 0],
+                                        std=[1/0.229, 1/0.224, 1/0.225],
+                                    ),
+                                    torchvision.transforms.Normalize(
+                                        mean=[-0.485, -0.456, -0.406],
+                                        std=[1., 1., 1.]
+                                    )])
+        
+        
+        return inv_color_normalization(images)*255
 
     @staticmethod
     def get_file_paths(data_path: str) -> List[str]:
