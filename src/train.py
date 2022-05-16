@@ -17,6 +17,7 @@ from models.unet import UNET, Late_fusion_UNET
 from models.si_unet import SI_UNET
 from models.feature_fusion import FusionNetwork
 from models.ynet import YNET
+from models.confuse_net import ConFuseNet
 from utils import utils
 from utils.metrics import Metrics
 
@@ -36,7 +37,8 @@ model_dict = {
     "SI-UNET": SI_UNET(),
     "unet_late_fusion": Late_fusion_UNET(),
     "FusionNetwork": FusionNetwork(),
-    "YNET": YNET()
+    "YNET": YNET(),
+    "ConFuseNet": ConFuseNet()
 }
 
 
@@ -58,13 +60,13 @@ def one_epoch(model, data_loader, epoch_number, opt=None):
             output = model(rgb, sparse, validity_mask)
             
         loss_function = nn.L1Loss()
-        unobserved_mask = torch.mul((dense > 0), ~(validity_mask > 0))
+        unobserved_mask = dense > 0
         masked_output = torch.mul(output, unobserved_mask)
         masked_gt = torch.mul(dense, unobserved_mask)
         loss = loss_function(masked_output, masked_gt) * output.numel() / unobserved_mask.sum()
         
         if not train:
-            metrics.step(masked_output, masked_gt)
+            metrics.step(masked_output * 16.384, masked_gt * 16.384)
         
         if train:
             opt.zero_grad()
@@ -81,7 +83,7 @@ def one_epoch(model, data_loader, epoch_number, opt=None):
     return np.mean(losses)
 
 
-def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=40, weight_decay=0., patience=10):
+def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=40, weight_decay=0., patience=25):
     train_losses = []
     valid_losses = []
     best_model = 0
@@ -113,13 +115,6 @@ def train(model, loader_train, loader_valid, lr=1e-3, max_epochs=40, weight_deca
         print(f'Train loss: {train_loss}, Validation loss: {valid_loss}')
         run.log('Train loss', train_loss)
         run.log('Validation loss', valid_loss)
-        
-        if valid_loss < best_loss:
-            best_loss = valid_loss
-            best_loss_epoch = epoch
-            
-        if epoch > best_loss_epoch + patience:
-            break            
 
     save_model(run, best_model)
     return train_losses, valid_losses
@@ -182,7 +177,7 @@ def main(data_path, model_name):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model_dict[model_name].to(device)
 
-    plot_history(*train(model, train_dataloader, valid_dataloader, max_epochs=100, weight_decay=1e-5))
+    plot_history(*train(model, train_dataloader, valid_dataloader, max_epochs=100, weight_decay=0))
 
     # Generate an example output from the model
     rgb, sparse, validity_mask, dense = next(iter(train_dataloader))

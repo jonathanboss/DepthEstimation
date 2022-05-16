@@ -67,7 +67,7 @@ class MatterportDataset(Dataset):
         return inv_color_normalization(images)
 
     @staticmethod
-    def get_file_paths(data_path: str) -> List[str]:
+    def get_file_paths(data_path: str):
         filepaths = []
         for p in Path(data_path).rglob('*.png'):
             depth = str(p)
@@ -75,4 +75,4 @@ class MatterportDataset(Dataset):
                                                           'undistorted_color_images').replace('_d', '_i')
             if exists(color) and exists(depth):
                 filepaths.append((depth, color))
-        return filepaths[0:10]
+        return filepaths
