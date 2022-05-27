@@ -19,7 +19,7 @@ def make_depth_image(img, color_map=cv2.COLORMAP_JET):
 
 
 img_depth = cv2.imread(
-    "datasets/matterport_undistorted2/subset/undistorted_depth_images/00ebbf3782c64d74aaf7dd39cd561175_d0_0.png", cv2.IMREAD_ANYDEPTH).astype(float)
+    "datasets/matterport_undistorted2/subset/undistorted_depth_images/0bdadf346eb441c48a58d9b8797ee882_d1_3.png", cv2.IMREAD_ANYDEPTH).astype(float)
 img_dense_color = make_depth_image(img_depth.copy())
 
 # Make a sparse image
@@ -36,12 +36,12 @@ mask[np.where(img_depth < 1.0)] = 1
 # img_upsample = cv2.inpaint(img_sparse_color, mask, 3, cv2.INPAINT_NS)
 
 grid_x, grid_y = np.mgrid[0:mask_sparse.shape[0], 0:mask_sparse.shape[1]]
-points = np.array(np.where(mask_sparse == 1))
-values = img_sparse[np.where(mask_sparse == 1)]
+points = np.array(np.where(img_sparse > 1.0))
+values = img_sparse[np.where(img_sparse > 1.0)]
 grid_z0 = griddata(points.T, values, (grid_x, grid_y), method='nearest')
 grid_z1 = griddata(points.T, values, (grid_x, grid_y), method='linear')
 nearest_color = make_depth_image(grid_z0)
-linear_color = make_depth_image(grid_z1)
+linear_color = make_depth_image(np.nan_to_num(grid_z1, nan=0.0))
 
 plt.subplot(221)
 plt.imshow(cv2.cvtColor(img_dense_color, cv2.COLOR_BGR2RGB))
@@ -56,7 +56,7 @@ plt.imshow(cv2.cvtColor(nearest_color, cv2.COLOR_BGR2RGB))
 plt.title('Nearest')
 plt.axis("off")
 plt.subplot(224)
-plt.imshow(grid_z1)
+plt.imshow(cv2.cvtColor(linear_color, cv2.COLOR_BGR2RGB))
 plt.title('Linear')
 plt.gcf().set_size_inches(6, 6)
 plt.axis("off")
